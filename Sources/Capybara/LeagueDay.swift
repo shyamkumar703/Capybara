@@ -2,12 +2,14 @@ import Foundation
 
 struct LeagueDay: Hashable {
     let rawValue: Int
+    var isInAllStarBreak: Bool
     static let daysInRegularSeason: Int = 174
 
-    public init?(_ day: Int) {
+    public init?(_ day: Int, isInAllStarBreak: Bool = false) {
         guard day < Self.daysInRegularSeason,
             day >= 0 else { return nil }
         self.rawValue = day
+        self.isInAllStarBreak = isInAllStarBreak
     }
 
     func hash(into hasher: inout Hasher) {
@@ -36,7 +38,7 @@ func scheduleGames(_ games: [Game]) -> [LeagueDay: [Game]] {
     // 48 days with 8 games
     // 1 day with 6 games
     var scheduleDictionary = [LeagueDay: [Game]]()
-    var gamesCopy = games
+    var gamesCopy = games.shuffled()
     var gameCounts: [Int] = (Array(repeating: 7, count: 120) + Array(repeating: 8, count: 48) + [6]).shuffled()
 
     gameCounts.insert(0, at: 116)
@@ -44,14 +46,17 @@ func scheduleGames(_ games: [Game]) -> [LeagueDay: [Game]] {
     gameCounts.insert(0, at: 118)
     gameCounts.insert(0, at: 119)
     gameCounts.insert(0, at: 120)
+    
+    var failedLeagueDays = [LeagueDay]()
 
     // populate dictionary
     for day in 0..<LeagueDay.daysInRegularSeason {
-        guard let ld = LeagueDay(day) else {
+        guard var ld = LeagueDay(day) else {
             fatalError()
         }
 
         guard gameCounts[day] > 0 else {
+            ld.isInAllStarBreak = true
             scheduleDictionary[ld] = []
             continue
         }
@@ -61,35 +66,74 @@ func scheduleGames(_ games: [Game]) -> [LeagueDay: [Game]] {
             schedule: scheduleDictionary
         )
 
-        let scheduledGames = scheduleGames(
+        let scheduleGamesResult = scheduleGames(
             gamesOnPreviousDay: gamesScheduledOnPreviousDay,
             gamesRemaining: &gamesCopy,
             gameCount: gameCounts[day]
         )
         
-        switch scheduledGames {
+        switch scheduleGamesResult {
         case .success(let games):
             scheduleDictionary[ld] = games
-        case .failure:
-            return scheduleGames(games.shuffled())
+        case .failure(let games):
+            scheduleDictionary[ld] = games
+            failedLeagueDays.append(ld)
         }
-
     }
-
-    assert(gamesCopy.isEmpty)
+    
+    scheduleOrphanedGames(
+        currentSchedule: &scheduleDictionary,
+        gamesRemaining: &gamesCopy
+    )
 
     return scheduleDictionary
+}
+
+private func scheduleOrphanedGames(
+    currentSchedule: inout [LeagueDay: [Game]],
+    gamesRemaining: inout [Game]
+) {
+    // find already scheduled games that can slot into the failed league days to get up to `gameCount`
+    // create a copy of failed league days and add relevant league days in as games are moved
+    // retry until copy of failed league days is empty.
+    
+    // create failedLeagueDays dictionary
+    for game in gamesRemaining {
+        let leagueDay = findLeagueDayToAdd(game: game, schedule: currentSchedule)
+        currentSchedule[leagueDay]?.append(game)
+    }
+    
+    gamesRemaining.removeAll()
+}
+
+private func findLeagueDayToAdd(game: Game, schedule: [LeagueDay: [Game]]) -> LeagueDay {
+    for (leagueDay, gamesScheduled) in schedule {
+        guard !leagueDay.isInAllStarBreak else {
+            continue
+        }
+        
+        if !gamesScheduled.containsAnyParticipant(game) {
+            return leagueDay
+        }
+    }
+    
+    fatalError()
 }
 
 enum ScheduleGameError: Error {
     case invalidScheduling
 }
 
+enum ScheduleGameResult {
+    case success([Game])
+    case failure([Game])
+}
+
 private func scheduleGames(
     gamesOnPreviousDay: [Game],
     gamesRemaining: inout [Game],
     gameCount: Int
-) -> Result<[Game], ScheduleGameError> {
+) -> ScheduleGameResult {
     var gamesRemainingToScheduleOnDay = gameCount
     var gamesToScheduleOnDay = [Game]()
     while gamesRemainingToScheduleOnDay > 0 {
@@ -101,14 +145,12 @@ private func scheduleGames(
             guard let game = gamesRemaining.getAGameExcludingBackToBacks(previousDayGames: gamesToScheduleOnDay) else {
                 // no games left?
                 // shouldn't happen theoretically
-                return .failure(.invalidScheduling)
+                return .failure(gamesToScheduleOnDay)
             }
             gamesToScheduleOnDay.append(game)
             gamesRemaining.remove(element: game)
         }
     }
-
-    assert(gamesToScheduleOnDay.count == gameCount)
 
     return .success(gamesToScheduleOnDay)
 }

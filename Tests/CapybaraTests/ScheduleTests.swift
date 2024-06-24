@@ -37,9 +37,7 @@ final class ScheduleTests: XCTestCase {
                 XCTAssert(games.isEmpty)
             }
             totalGameCount += games.count
-            let validGameCount = games.count == 8 || games.count == 7 || games.count == 6 || games.count == 0
-            XCTAssert(validGameCount)
-
+            
             var teamSet = Set<Team>()
             for game in games {
                 let (wasInsertedTeam1, _) = teamSet.insert(game.team1)
@@ -49,6 +47,38 @@ final class ScheduleTests: XCTestCase {
             }
         }
         XCTAssertEqual(totalGameCount, 1230)
+        
+        for team in Team.allCases {
+            let longestStreak = getLongestBackToBackStreak(team: team, schedule: gameSchedule)
+            print("\n\(team) longest b2b streak: \(longestStreak)\n")
+        }
+    }
+    
+    private func getLongestBackToBackStreak(team: Team, schedule: [LeagueDay: [Game]]) -> Int {
+        var currentStreak = 0
+        var longestStreak = 0
+        for day in 0..<LeagueDay.daysInRegularSeason {
+            guard let ld = LeagueDay(day) else {
+                fatalError()
+            }
+            guard let games = schedule[ld] else {
+                if currentStreak > longestStreak {
+                    longestStreak = currentStreak
+                }
+                currentStreak = 0
+                continue
+            }
+            
+            if games.contains(team) {
+                currentStreak += 1
+            } else {
+                if currentStreak > longestStreak {
+                    longestStreak = currentStreak
+                }
+                currentStreak = 0
+            }
+        }
+        return max(currentStreak, longestStreak)
     }
 }
 

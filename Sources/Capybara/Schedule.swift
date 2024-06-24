@@ -340,6 +340,10 @@ extension Array where Element == Game {
 
         return false
     }
+    
+    func containsAnyParticipant(_ game: Game) -> Bool {
+        contains(game.team1) || contains(game.team2)
+    }
 
     /// Returns (index, game) if possible
     func getAGameExcludingBackToBacks(previousDayGames: [Game]) -> Game? {
