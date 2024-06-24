@@ -23,6 +23,19 @@ struct LeagueDay: Hashable {
     }
 }
 
+func scheduleGamesParallel(
+    _ games: [Game],
+    completion: @escaping ([LeagueDay: [Game]]) -> Void
+) {
+    let pool = ParallelWorkerPool(
+        numberOfWorkers: 50,
+        work: { return scheduleGames(games) },
+        completion: completion
+    )
+    
+    pool.run()
+}
+
 func scheduleGames(_ games: [Game]) -> [LeagueDay: [Game]] {
     // 174 league days
     // 1230 games
