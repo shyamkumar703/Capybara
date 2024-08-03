@@ -1,10 +1,3 @@
-//
-//  Team.swift
-//  
-//
-//  Created by Shyam Kumar on 6/9/24.
-//
-
 import Foundation
 
 enum Team: String, CaseIterable, Equatable, Hashable {
