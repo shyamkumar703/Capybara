@@ -1,10 +1,3 @@
-//
-//  TeamTests.swift
-//
-//
-//  Created by Shyam Kumar on 6/9/24.
-//
-
 @testable import Capybara
 import XCTest
 
