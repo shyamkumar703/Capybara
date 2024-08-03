@@ -10,25 +10,40 @@ extension Dictionary where Key == LeagueDay, Value == [Game] {
         if gamesCurrentlyScheduledOnLeagueDay.contains(game.team1) || gamesCurrentlyScheduledOnLeagueDay.contains(game.team2) {
             return false
         }
-        guard !shouldAllowBackToBacks,
-              let previousLeagueDay = leagueDay.previous() else {
+        // previous league day
+        guard let previousLeagueDay = leagueDay.previous(),
+              let gamesScheduledOnPreviousLeagueDay = self[previousLeagueDay] else {
+            // if no previous league day, or no games scheduled, we're good to go
             return true
         }
-        let gamesCurrentlyScheduledOnPreviousLeagueDay = self[previousLeagueDay] ?? []
-        if gamesCurrentlyScheduledOnPreviousLeagueDay.contains(game.team1) || gamesCurrentlyScheduledOnLeagueDay.contains(game.team2) {
-            return false
-        } else {
-            // even if we allow b2bs, we CANNOT allow 3 in a row
-            guard let previousPreviousLeagueDay = previousLeagueDay.previous() else {
-                // if there is no previous previous league day, we're good
+        
+        if gamesScheduledOnPreviousLeagueDay.contains(game.team1) || gamesScheduledOnPreviousLeagueDay.contains(game.team2) {
+            // if we're not allowing b2bs, this disqualifies the game from being scheduled
+            guard shouldAllowBackToBacks else { return false }
+            // if we're allowing b2bs, we NEED to make sure we're not scheduling 3 in a row
+            guard let previousPreviousLeagueDay = previousLeagueDay.previous(),
+                  let gamesScheduledOnPreviousPreviousLeagueDay = self[previousPreviousLeagueDay] else {
+                // if no previous previous league day, we're good to go
                 return true
             }
-            let gamesCurrentlyScheduledOnPreviousPreviousLeagueDay = self[previousPreviousLeagueDay] ?? []
-            if gamesCurrentlyScheduledOnPreviousPreviousLeagueDay.contains(game.team1) || gamesCurrentlyScheduledOnPreviousPreviousLeagueDay.contains(game.team2) {
+            if gamesScheduledOnPreviousPreviousLeagueDay.contains(game.team1) || gamesScheduledOnPreviousPreviousLeagueDay.contains(game.team2) {
                 return false
             } else {
+                // if this isn't a 3-in-a-row for either team, we're good to go
                 return true
             }
+        } else {
+            // if this isn't a b2b for either team anyway, we're good
+            return true
         }
+    }
+    
+    func getSchedule(for team: Team) -> [(LeagueDay, Game?)] {
+        var teamSchedule = [(LeagueDay, Game?)]()
+        for (ld, games) in self {
+            teamSchedule.append((ld, games.getGamesWith(team)))
+        }
+        teamSchedule.sort(by: { $0.0.rawValue < $1.0.rawValue })
+        return teamSchedule
     }
 }

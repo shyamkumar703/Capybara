@@ -26,6 +26,55 @@ final class ScheduleTests: XCTestCase {
             XCTAssertEqual(games.getGameCountForTeam(team), 82)
         }
     }
+    
+    func testCannotScheduleBackToBack_IfBackToBackNotAllowed() {
+        let testSchedule: [LeagueDay: [Game]] = [
+            .init(0)!: [.init(team1: .gsw, team2: .atl)],
+            .init(1)!: [.init(team1: .bos, team2: .brk)]
+        ]
+        let canSchedule = testSchedule.canSchedule(
+            game: .init(
+                team1: .bos,
+                team2: .chi
+            ),
+            on: .init(2)!,
+            shouldAllowBackToBacks: false
+        )
+        XCTAssertFalse(canSchedule)
+    }
+    
+    func testCanScheduleBackToBack_IfBackToBackAllowed() {
+        let testSchedule: [LeagueDay: [Game]] = [
+            .init(0)!: [.init(team1: .bos, team2: .atl)],
+            .init(1)!: [.init(team1: .bos, team2: .brk)]
+        ]
+        let canSchedule = testSchedule.canSchedule(
+            game: .init(
+                team1: .bos,
+                team2: .chi
+            ),
+            on: .init(2)!,
+            shouldAllowBackToBacks: true
+        )
+        XCTAssertFalse(canSchedule)
+    }
+
+    func testAllowBackToBack_DoNotAllowThreeInARow() {
+        let testSchedule: [LeagueDay: [Game]] = [
+            .init(0)!: [.init(team1: .gsw, team2: .atl)],
+            .init(1)!: [.init(team1: .bos, team2: .brk)],
+            .init(2)!: [.init(team1: .bos, team2: .brk)],
+        ]
+        let canSchedule = testSchedule.canSchedule(
+            game: .init(
+                team1: .bos,
+                team2: .chi
+            ),
+            on: .init(3)!,
+            shouldAllowBackToBacks: true
+        )
+        XCTAssertFalse(canSchedule)
+    }
 
     func testScheduleGames() {
         let matchupSchedule = generateMatchupScheduleOptions()
@@ -77,5 +126,18 @@ extension Array where Element == Game {
         }
 
         return gameCount
+    }
+}
+
+extension Dictionary where Key == LeagueDay, Value == [Game] {
+    func dumpScheduleFor(team: Team) {
+        let teamSchedule = getSchedule(for: team)
+        for (ld, game) in teamSchedule {
+            if let game {
+                print("League Day \(ld.rawValue): \(game.team1) vs. \(game.team2)")
+            } else {
+                print("League Day \(ld.rawValue): Day Off")
+            }
+        }
     }
 }

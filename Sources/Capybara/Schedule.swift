@@ -11,6 +11,9 @@ func scheduleGames(
         allStarBreak: allStarBreak,
         christmasDay: christmasDay
     )
+    for ld in leagueDays {
+        scheduleDictionary[ld] = []
+    }
     /*
      STRATEGY
      - greedily schedule games without b2bs for any team
@@ -22,7 +25,10 @@ func scheduleGames(
     
     // 1. greedily schedule with no b2bs
     for ld in leagueDays {
-        if allStarBreak.contains(ld.rawValue) { continue }
+        if allStarBreak.contains(ld.rawValue) {
+            scheduleDictionary[ld] = []
+            continue
+        }
         for game in gamesCopy {
             if scheduleDictionary.canSchedule(game: game, on: ld, shouldAllowBackToBacks: false) {
                 if scheduleDictionary[ld] == nil {
