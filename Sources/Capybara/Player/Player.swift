@@ -1,6 +1,6 @@
 import Foundation
 
-struct Player: Identifiable {
+struct Player: Identifiable, Equatable {
     let id: String = UUID().uuidString
     let firstName: String
     let lastName: String

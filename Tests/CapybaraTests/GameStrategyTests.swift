@@ -65,16 +65,19 @@ final class GameStrategyTests: XCTestCase {
                 .init(gameTime: .create(minute: 4, second: 22).unwrap(), lineup: .computedTest),
                 .init(gameTime: .create(minute: 5, second: 22).unwrap(), lineup: .computedTest),
                 .init(gameTime: .create(minute: 6, second: 22).unwrap(), lineup: .computedTest),
-                .init(gameTime: .create(minute: 7, second: 22).unwrap(), lineup: .computedTest)
+                .init(gameTime: .create(minute: 7, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 8, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 9, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 10, second: 22).unwrap(), lineup: .computedTest)
             ]
         )
         switch strategyResult {
         case .success:
-            XCTFail("this game strategy creation should fail, more than 7 substitutions are not allowed")
+            XCTFail("this game strategy creation should fail, more than 10 substitutions are not allowed")
         case .failure(let error):
             switch error {
             case .invalidNumberOfSubstitutions(let numberOfSubs):
-                XCTAssertEqual(numberOfSubs, 8)
+                XCTAssertEqual(numberOfSubs, 11)
             default:
                 XCTFail("this game strategy creation should fail with an invalidNumberOfSubstitutions error")
             }
@@ -115,6 +118,117 @@ final class GameStrategyTests: XCTestCase {
             default:
                 return
             }
+        }
+    }
+    
+    
+    func testGameStrategy_RequiresMoreThanSevenTimeouts_ReturnsError() {
+        let strategyResult = GameStrategy.create(
+            startingLineup: .computedTest,
+            substitutions: [
+                .init(gameTime: .create(minute: 0, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 1, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 2, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 3, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 4, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 5, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 6, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 7, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 8, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 9, second: 22).unwrap(), lineup: .computedTest),
+            ]
+        )
+        switch strategyResult {
+        case .success:
+            XCTFail("this game strategy creation should fail, this requires more than 7 timeouts to complete")
+        case .failure(let error):
+            switch error {
+            case .substitutionConfigurationRequiresMoreThanSevenTimeouts:
+                return
+            default:
+                XCTFail("this game strategy creation should fail with an invalidNumberOfSubstitutions error")
+            }
+        }
+    }
+    
+    func testGameStrategy_SevenTimeoutsAndTwoOnQuarterBoundaryAndOneExtra_RequiresMoreThanSevenTimeouts() {
+        let strategyResult = GameStrategy.create(
+            startingLineup: .computedTest,
+            substitutions: [
+                .init(gameTime: .create(minute: 0, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 1, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 2, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 3, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 4, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 5, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 6, second: 22).unwrap(), lineup: .computedTest),
+                // 7 timeouts above
+                .init(gameTime: .endOfFirstQuarter, lineup: .computedTest),
+                .init(gameTime: .endOfSecondQuarter, lineup: .computedTest),
+                // 2 changes on quarter boundaries above
+                .init(gameTime: .create(minute: 7, second: 22).unwrap(), lineup: .computedTest)
+                // need 8 timeoutes to fulfill
+            ]
+        )
+        switch strategyResult {
+        case .success:
+            XCTFail("this game strategy creation should fail, this requires more than 7 timeouts to complete")
+        case .failure(let error):
+            switch error {
+            case .substitutionConfigurationRequiresMoreThanSevenTimeouts:
+                return
+            default:
+                XCTFail("this game strategy creation should fail with an invalidNumberOfSubstitutions error")
+            }
+        }
+    }
+    
+    func testGameStrategy_TwoLineupChangesOnQuarterBoundary_ReturnsClashingSubstitutions() {
+        let sub1 = Lineup.computedTest
+        let sub2 = Lineup.computedTest
+        let strategyResult = GameStrategy.create(
+            startingLineup: .computedTest,
+            substitutions: [
+                .init(gameTime: .endOfFirstQuarter, lineup: sub1),
+                .init(gameTime: .endOfFirstQuarter, lineup: sub2)
+            ]
+        )
+        
+        switch strategyResult {
+        case .success:
+            XCTFail("this game strategy creation should fail, there are two lineup changes at the first quarter boundary")
+        case .failure(let error):
+            switch error {
+            case .invalidNumberOfSubstitutions, .invalidSubstitutionScheduledForStartOfGame, .substitutionConfigurationRequiresMoreThanSevenTimeouts:
+                XCTFail("this game strategy should fail with a clashingSubstitutions error")
+            default:
+                return
+            }
+        }
+    }
+    
+    func testGameStrategy_TenLineupChanges_SevenTimeouts_ThreeOnQuarterBoundaries_Succeeds() {
+        let strategyResult = GameStrategy.create(
+            startingLineup: .computedTest,
+            substitutions: [
+                .init(gameTime: .create(minute: 0, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 1, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 2, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 3, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 4, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 5, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .create(minute: 6, second: 22).unwrap(), lineup: .computedTest),
+                .init(gameTime: .endOfFirstQuarter, lineup: .computedTest),
+                .init(gameTime: .endOfSecondQuarter, lineup: .computedTest),
+                .init(gameTime: .endOfThirdQuarter, lineup: .computedTest),
+            ]
+        )
+        
+        switch strategyResult {
+        case .success:
+            return
+        case .failure:
+            XCTFail("this creation should've succeeded")
         }
     }
 }
